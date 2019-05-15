@@ -13,6 +13,8 @@ import java.util.Random;
     boolean endGame = false;
     boolean levelUp = false;
     boolean sUP, sDOWN, sRIGHT, sLEFT;
+    String scene = "menu_scene";
+    ArrayList<Star> stars = new ArrayList();
     int newRoids;
     float roidSpeed;
     int startingRoids = 4;
@@ -35,14 +37,19 @@ import java.util.Random;
     public void setup(){
         background(0);
         // load high score from a file
+        for( int i = 0; i < 200; i++){
+          Star star_temp = new Star();
+          stars.add(star_temp);
+        }
     }
 
     public void draw(){
         background(0);
-
+        
+        
+        
         if (newGame){
             // TODO: 10/05/2019 have a menu display on launch to start a new game or exit, also display a high score
-
             // On menu activate start a new game
             newRoids = startingRoids;
             roidSpeed = startingSpeed;
@@ -54,52 +61,85 @@ import java.util.Random;
             newGame = false;
         }
 
-
-        if (endGame){
-            // TODO: 10/05/2019 make a menu that handles a 'new high score', and one that displays the current high
-            //  score as well as options to start a new game or exit
-            System.exit(2);
-        }
-
-        if (levelUp){
-            // TODO: 10/05/2019 assess difficulty progression
-            ++newRoids;
-            populateAsteroids(newRoids, roidSpeed);
-        }
-
-        // Draw everything
-        for (Asteroid roid : asteroids) {
-            roid.updatePosition();
-        }
-        for (Bullet bullet : bullets) {
-            bullet.updatePosition();
-        }
-        playerShip.updatePosition();
-
-        // Game progress update
-
-        // Reset the asteroids on a higher difficulty if they are all gone
-        if (asteroids.size() == 0){
-            levelUp = true;
-        }
-
-        // Loop over each asteroid and check if the player ship has collided, end the game if it has
-        for (Asteroid roid : asteroids) {
-            if(collisionDetection(playerShip, roid)){
-                endGame = true;
+        switch( scene ){
+          case "game_scene":
+             if (levelUp){
+                // TODO: 10/05/2019 assess difficulty progression
+                ++newRoids;
+                populateAsteroids(newRoids, roidSpeed);
             }
-        }
-        // Loop over each bullet and asteroid and check for collision
-        for (Asteroid roid : asteroids) {
+    
+            // Draw everything
+            for (Asteroid roid : asteroids) {
+                roid.updatePosition();
+            }
             for (Bullet bullet : bullets) {
-                if (collisionDetection(bullet, roid)){
-                    System.out.println("Break"); //Testing
-                    // breakAsteroid(roid); Currently not working
-                    break;
+                bullet.updatePosition();
+            }
+            playerShip.updatePosition();
+    
+            // Game progress update
+    
+            // Reset the asteroids on a higher difficulty if they are all gone
+            if (asteroids.size() == 0){
+                levelUp = true;
+            }
+    
+            // Loop over each asteroid and check if the player ship has collided, end the game if it has
+            for (Asteroid roid : asteroids) {
+                if(collisionDetection(playerShip, roid)){
+                    scene = "endgame_scene";
                 }
             }
+            // Loop over each bullet and asteroid and check for collision
+            for (Asteroid roid : asteroids) {
+                for (Bullet bullet : bullets) {
+                    if (collisionDetection(bullet, roid)){
+                        System.out.println("Break"); //Testing
+                        // breakAsteroid(roid); Currently not working
+                        break;
+                    }
+                }
+            }
+            break;
+            
+          case "highscore_scene":
+            break;
+          
+          case "endgame_scene":
+            System.exit(2);
+            break;
+          
+          case "menu_scene":
+              for( Star star : stars){
+                star.move();
+                star.create();
+              }
+              stroke( 255, 255, 255 ,255);
+              
+              //start
+              textSize(32);
+              fill( 255, 255, 255, 255);
+              text( "start", width / 2 - 40, 235 );
+              fill( 0, 0, 0, 0);
+              rect( 400, 200, 400, 50 ); 
+              
+              //highscore
+              fill( 255, 255, 255, 255);
+              text( "highscore", width / 2 - 85, 335 );
+              fill( 0, 0, 0, 0);
+              rect( 400, 300, 400, 50 ); 
+              
+              //exit
+              fill( 255, 255, 255, 255);
+              text( "exit", width / 2 - 30, 435 );
+              fill( 0, 0, 0, 0);
+              rect( 400, 400, 400, 50 ); 
+              
+              
+            break;
+          
         }
-
         // Currently not working
         /*
         asteroids.removeAll(removeRoids);
@@ -129,6 +169,12 @@ import java.util.Random;
         if (key == 'f') {
             bullets.add(new Bullet());
         }
+        
+        if(key == ESC){
+          key = 0; //Stop the game auto closing
+          scene = "menu_scene";
+        }
+        
     }
 
     public void keyReleased() {
@@ -146,6 +192,32 @@ import java.util.Random;
                 sLEFT=false;
             }
         }
+    }
+    
+    //Mouse inputs to determine which button was pressed
+    public void mousePressed() {
+      if( scene != "menu_scene"){
+        return;
+      }
+      if( mouseX > 400 && mouseX < 800 ){
+        
+        //start
+        if( mouseY > 200 && mouseY < 250 ){
+          scene = "game_scene";
+        }
+        
+        //highscore
+        if( mouseY > 300 && mouseY < 350 ){
+          scene = "highscore_scene";
+        }
+        
+        //exit
+        if( mouseY > 400 && mouseY < 450){
+          System.exit(2);
+        }
+        
+        
+      }
     }
 
     /******************
@@ -177,7 +249,6 @@ import java.util.Random;
             asteroids.add(new Asteroid(3,location,direction,speedFactor));
         }
     }
-
 
     /**
      * Method to determine contact between two objects
@@ -529,7 +600,32 @@ import java.util.Random;
                 location.y = 0;
             }
         }
+        
     }
+    
+    /*******************************************
+     * Class for the cool stars in the menu UI *
+     *******************************************/
+    class Star {
+          
+          float x = random(width);
+          float y = random(height);
+          float speed = random(5, 20);
+          
+          void move( ) {
+            y += speed;
+            if( y > height){
+              y = 0;
+              speed = random( 5, 20 );
+            }
+          }
+        
+          void create( ){
+            stroke( 255, 255 ,255 ,255);
+            line( x, y, x, y + 5);
+            
+          }
+        }
 
 
     /************************
