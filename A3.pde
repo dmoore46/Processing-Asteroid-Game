@@ -1,3 +1,4 @@
+import processing.sound.*;
 import processing.core.*;
 import java.awt.*;
 import java.util.ArrayList;
@@ -26,6 +27,9 @@ Asteroid hitRoid;
 Bullet brokenBullet;
 Ship playerShip;
 int playerSize = 15; // player size as a factor (not actual size in pixels)
+SoundFile moving;
+SoundFile breaking;
+SoundFile shooting;
 
 /**********************
  * Processing Methods *
@@ -57,125 +61,59 @@ public void setup() {
     Star star_temp = new Star();
     stars.add(star_temp);
   }
-}
 
+
+  // load sound files
+  moving = new SoundFile(this, "engine.wav");
+  breaking = new SoundFile(this, "break.wav");
+  shooting = new SoundFile(this, "shoot.wav");
+}
 public void draw() {
   background(0);
 
-
-  if (newGame) {
-    // TODO: 10/05/2019 have a menu display on launch to start a new game or exit, also display a high score
-    // On menu activate start a new game
-    playerShip = new Ship(playerSize);
-    newRoids = startingRoids;
-    roidSpeed = startingSpeed;
-    populateAsteroids(newRoids, roidSpeed);
-    newGame = false;
-  }
-
   switch( scene ) {
   case "game_scene":
-    if (levelUp) {
-      // TODO: 10/05/2019 assess difficulty progression
-      ++newRoids;
-      populateAsteroids(newRoids, roidSpeed);
-    }
-
-    // Draw everything
-    for (Asteroid roid : asteroids) {
-      roid.updatePosition();
-    }
-    for (Bullet bullet : bullets) {
-      bullet.updatePosition();
-    }
-    playerShip.updatePosition();
-
-    // Game progress update
-
-    // Reset the asteroids on a higher difficulty if they are all gone
-    if (asteroids.size() == 0) {
-      levelUp = true;
-    }
-
-    // Loop over each asteroid and check if the player ship has collided, end the game if it has
-    for (Asteroid roid : asteroids) {
-      if (collisionDetection(playerShip, roid)) {
-        scene = "endgame_scene";
-      }
-    }
-    // Loop over each bullet and asteroid and check for collision
-    for (Asteroid roid : asteroids) {
-        for (Bullet bullet : bullets) {
-            if (collisionDetection(bullet, roid)){
-                hitRoid = roid;
-                brokenBullet = bullet;
-                break;
-            }
-        }
-    }
-    
+    gameScene();  
     break;
 
   case "highscore_scene":
+    highScoreScene();
     break;
 
   case "endgame_scene":
-    System.exit(2);
+    endGameScene();
     break;
 
   case "menu_scene":
-    for ( Star star : stars) {
-      star.move();
-      star.create();
-    }
-    stroke( 255, 255, 255, 255);
-
-    //start
-    textSize(32);
-    fill( 255, 255, 255, 255);
-    text( "start", width / 2 - 40, 235 );
-    fill( 0, 0, 0, 0);
-    rect( 400, 200, 400, 50 ); 
-
-    //highscore
-    fill( 255, 255, 255, 255);
-    text( "highscore", width / 2 - 85, 335 );
-    fill( 0, 0, 0, 0);
-    rect( 400, 300, 400, 50 ); 
-
-    //exit
-    fill( 255, 255, 255, 255);
-    text( "exit", width / 2 - 30, 435 );
-    fill( 0, 0, 0, 0);
-    rect( 400, 400, 400, 50 ); 
-
-
+    menuScene();
     break;
   }
-  // Resolve bullet collision with asteroids
-  bullets.remove(brokenBullet);
-  brokenBullet = null;
-  breakAsteroid(hitRoid);
-  hitRoid = null;
+
 }
 
 // Keyboard methods used to handle player ship movement (source: A3 sample code)
 public void keyPressed() {
   if (key == CODED) {
     if (keyCode == UP) {
+      playMoving();
       sUP=true;
     }
     if (keyCode == DOWN) {
+      playMoving();
       sDOWN=true;
     }
     if (keyCode == RIGHT) {
+      playMoving();
       sRIGHT=true;
-    }
+    } 
     if (keyCode == LEFT) {
+      playMoving();
       sLEFT=true;
     }
   }
+  
   if (key == 'f') {
+    playShooting();
     bullets.add(new Bullet());
   }
 
@@ -199,8 +137,10 @@ public void keyReleased() {
     if (keyCode == LEFT) {
       sLEFT=false;
     }
+    stopMoving(); // Stops playing the moving sound if appropriate
   }
 }
+
 
 //Mouse inputs to determine which button was pressed
 public void mousePressed() {
@@ -211,6 +151,7 @@ public void mousePressed() {
 
     //start
     if ( mouseY > 200 && mouseY < 250 ) {
+      newGame = true;
       scene = "game_scene";
     }
 
@@ -226,9 +167,151 @@ public void mousePressed() {
   }
 }
 
+/*********************
+ * Draw loop Methods *
+ *********************/
+
+/**
+ * These methods provide the draw loop the main code of the game
+ * in order to keep the draw loop tidy
+ */
+
+void menuScene(){
+  for ( Star star : stars) {
+    star.move();
+    star.create();
+  }
+  stroke( 255, 255, 255, 255);
+  
+  //start
+  textSize(32);
+  fill( 255, 255, 255, 255);
+  text( "start", width / 2 - 40, 235 );
+  fill( 0, 0, 0, 0);
+  rect( 400, 200, 400, 50 ); 
+  
+  //highscore
+  fill( 255, 255, 255, 255);
+  text( "highscore", width / 2 - 85, 335 );
+  fill( 0, 0, 0, 0);
+  rect( 400, 300, 400, 50 ); 
+  
+  //exit
+  fill( 255, 255, 255, 255);
+  text( "exit", width / 2 - 30, 435 );
+  fill( 0, 0, 0, 0);
+  rect( 400, 400, 400, 50 ); 
+}
+
+void gameScene(){
+  // Reset everything if starting a new game
+  if (newGame) {
+    asteroids = null;
+    asteroids = new ArrayList();
+    playerShip = null;
+    playerShip = new Ship(playerSize);
+    newRoids = startingRoids;
+    roidSpeed = startingSpeed;
+    populateAsteroids(newRoids, roidSpeed);
+    newGame = false;
+  }
+  
+  // Draw everything
+  for (Asteroid roid : asteroids) {
+    roid.updatePosition();
+  }
+  
+  for (Bullet bullet : bullets) {
+    bullet.updatePosition();
+  }
+  
+  playerShip.updatePosition();
+  
+  // Game progress update
+  
+  // Draw increasing numbers of asteroids as they are cleared
+  // Note - speed adjustment not currently used
+  if (asteroids.size() == 0) {
+    ++newRoids;
+    populateAsteroids(newRoids, roidSpeed);
+  }
+   
+  // Loop over each asteroid and check if the player ship has collided, end the game if it has
+  for (Asteroid roid : asteroids) {
+    if (collisionDetection(playerShip, roid)) {
+      scene = "endgame_scene";
+    }
+  }
+  // Loop over each bullet and asteroid and check for collision
+  for (Asteroid roid : asteroids) {
+      for (Bullet bullet : bullets) {
+          if (collisionDetection(bullet, roid)){
+              playBreaking();
+              hitRoid = roid;
+              brokenBullet = bullet;
+              break;
+          }
+      }
+  }
+  
+  // Resolve bullet collision with asteroids
+  bullets.remove(brokenBullet);
+  brokenBullet = null;
+  breakAsteroid(hitRoid);
+  hitRoid = null;
+}
+
+void endGameScene(){
+  scene = "menu_scene";
+}
+
+void highScoreScene(){
+}
+
 /******************
  * Custom Methods *
  ******************/
+
+/**
+ * playMoving and stopMoving ensure the smooth playing of moving sounds
+ */
+void playMoving(){
+  if (!moving.isPlaying()){
+    moving.loop(1,0,0.5);
+  }
+}
+
+void stopMoving(){
+  if (!sLEFT && !sRIGHT && !sUP && !sDOWN){
+    moving.stop();
+  }
+}
+
+/**
+ * Method to resolve conflicts in moving/shooting
+ */
+void playShooting(){
+  if (moving.isPlaying()){
+    moving.pause();
+    shooting.play();
+    moving.play();
+  } else {
+    shooting.play();
+  }
+}
+
+/**
+ * Method to resolve conflicts in moving/breaking
+ */
+void playBreaking(){
+  if (moving.isPlaying()){
+    moving.pause();
+    breaking.play();
+    moving.play();
+  } else {
+    breaking.play();
+  }
+}
 
 /**
  * Method to generate a new set of asteroids at the start of a new game or on a completion reset
