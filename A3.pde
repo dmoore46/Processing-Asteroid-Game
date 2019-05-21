@@ -36,7 +36,7 @@ SoundFile shooting;
  **********************/
 
 public void settings() {
-  size(1200, 1200);
+  size(1920, 1080);
 }
 
 public void setup() {
@@ -144,10 +144,11 @@ public void keyReleased() {
 
 //Mouse inputs to determine which button was pressed
 public void mousePressed() {
+  float[] rWidth = {(width-400)/2,400};
   if ( scene != "menu_scene") {
     return;
   }
-  if ( mouseX > 400 && mouseX < 800 ) {
+  if ( mouseX > rWidth[0] && mouseX < rWidth[0]+rWidth[1] ) {
 
     //start
     if ( mouseY > 200 && mouseY < 250 ) {
@@ -181,6 +182,7 @@ void menuScene(){
     star.move();
     star.create();
   }
+  float[] rWidth = {(width-400)/2,400};
   stroke( 255, 255, 255, 255);
   
   //start
@@ -188,19 +190,19 @@ void menuScene(){
   fill( 255, 255, 255, 255);
   text( "start", width / 2 - 40, 235 );
   fill( 0, 0, 0, 0);
-  rect( 400, 200, 400, 50 ); 
+  rect( rWidth[0], 200, rWidth[1], 50 ); 
   
   //highscore
   fill( 255, 255, 255, 255);
   text( "highscore", width / 2 - 85, 335 );
   fill( 0, 0, 0, 0);
-  rect( 400, 300, 400, 50 ); 
+  rect( rWidth[0], 300, rWidth[1], 50 ); 
   
   //exit
   fill( 255, 255, 255, 255);
   text( "exit", width / 2 - 30, 435 );
   fill( 0, 0, 0, 0);
-  rect( 400, 400, 400, 50 ); 
+  rect( rWidth[0], 400, rWidth[1], 50 ); 
 }
 
 void gameScene(){
@@ -707,7 +709,7 @@ void breakAsteroid(Asteroid brokenRoid){
             }
 
             if (location.y <= 0 - roidShape.height){
-                location.y = width;
+                location.y = height;
             }
 
             if (location.y >= height + roidShape.height){
