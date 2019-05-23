@@ -3,6 +3,7 @@ import processing.core.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Random;
+import de.bezier.data.sql.*;
 
 /************************
  * Start of "Processing" *
@@ -10,11 +11,14 @@ import java.util.Random;
 
 boolean newGame = true;
 boolean endGame = false;
-boolean levelUp = false;
-boolean sUP, sDOWN, sRIGHT, sLEFT;
+boolean sUP, sDOWN, sRIGHT, sLEFT; 
 String scene = "menu_scene";
 ArrayList<Star> stars = new ArrayList();
 File database = null; // declared null to create it in global scope
+SQLite db;
+int score;
+boolean once = true;
+int[] highscores;
 int newRoids;
 float roidSpeed;
 int startingRoids = 4;
@@ -53,6 +57,14 @@ public void setup() {
     }
   }
 
+  //interesting how db in processing is similar to db in php
+  db = new SQLite( this, "db.sql" );
+  db.setDebug(true);
+  if( db.connect() ){
+
+    db.execute( "CREATE TABLE IF NOT EXISTS highscores (highscore INTEGER NOT NULL)" );
+  }
+
   // load high score from a file
   for ( int i = 0; i < 200; i++) {
     Star star_temp = new Star();
@@ -60,9 +72,9 @@ public void setup() {
   }
 
   // load sound files
-  moving = new SoundFile(this, "engine.wav");
-  breaking = new SoundFile(this, "break.wav");
-  shooting = new SoundFile(this, "shoot.wav");
+  moving = new SoundFile(this, "engine.wav"); //source: asteroids demo video (https://www.youtube.com/watch?v=WYSupJ5r2zo)
+  breaking = new SoundFile(this, "break.wav"); //source: asteroids demo video (https://www.youtube.com/watch?v=WYSupJ5r2zo)
+  shooting = new SoundFile(this, "shoot.wav"); //source: asteroids demo video (https://www.youtube.com/watch?v=WYSupJ5r2zo)
 }
 public void draw() {
   background(0);
@@ -139,26 +151,47 @@ public void keyReleased() {
 //Mouse inputs to determine which button was pressed
 public void mousePressed() {
   float[] rWidth = {(width-400)/2, 400};
-  if ( scene != "menu_scene") {
-    return;
-  }
   if ( mouseX > rWidth[0] && mouseX < rWidth[0]+rWidth[1] ) {
 
+    if( scene == "menu_scene"){
     //start
-    if ( mouseY > 200 && mouseY < 250 ) {
-      newGame = true;
-      scene = "game_scene";
+      if ( mouseY > 200 && mouseY < 250 ) {
+        newGame = true;
+        scene = "game_scene";
+      }
+  
+      //highscore
+      if ( mouseY > 300 && mouseY < 350 ) {
+        once = true;
+        scene = "highscore_scene";
+      }
+  
+      //exit
+      if ( mouseY > 400 && mouseY < 450) {
+        System.exit(2);
+      }
     }
-
-    //highscore
-    if ( mouseY > 300 && mouseY < 350 ) {
-      scene = "highscore_scene";
+    
+    if( scene == "endgame_scene" ){
+      
+       //highscore
+      if ( mouseY > 300 && mouseY < 350 ) {
+        once = true;
+        scene = "highscore_scene";
+      }
+      
+      //back
+      if ( mouseY > 400 && mouseY < 450) {
+        scene = "menu_scene";
+      }
     }
-
-    //exit
-    if ( mouseY > 400 && mouseY < 450) {
-      System.exit(2);
+    
+    if( scene == "highscore_scene" ){
+      if( mouseY > 420 && mouseY < 470 ) {
+        scene = "menu_scene";
+      }
     }
+    
   }
 }
 
@@ -202,6 +235,7 @@ void menuScene() {
 void gameScene() {
   // Reset everything if starting a new game
   if (newGame) {
+    score = 0;
     asteroids = null;
     asteroids = new ArrayList();
     playerShip = null;
@@ -221,6 +255,11 @@ void gameScene() {
     bullet.updatePosition();
   }
 
+  textSize(32);
+  fill( 255, 255, 255, 255);
+  text( "Score: " + score, 0, 32 );
+  fill( 0, 0, 0, 0);
+
   playerShip.updatePosition();
 
   // Game progress update
@@ -228,6 +267,7 @@ void gameScene() {
   // Draw increasing numbers of asteroids as they are cleared
   // Note - speed adjustment not currently used
   if (asteroids.size() == 0) {
+    roidSpeed *= 1.2;
     ++newRoids;
     populateAsteroids(newRoids, roidSpeed);
   }
@@ -236,6 +276,8 @@ void gameScene() {
   for (Asteroid roid : asteroids) {
     if (collisionDetection(playerShip, roid)) {
       scene = "endgame_scene";
+      db.execute("INSERT INTO highscores (highscore) VALUES(" + score + ")");
+      println("added to db");
     }
   }
   // Loop over each bullet and asteroid and check for collision
@@ -245,11 +287,13 @@ void gameScene() {
         playBreaking();
         hitRoid = roid;
         brokenBullet = bullet;
+        score++;
         break;
       }
     }
   }
-
+  
+  
   // Resolve bullet collision with asteroids
   bullets.remove(brokenBullet);
   brokenBullet = null;
@@ -258,11 +302,56 @@ void gameScene() {
 }
 
 void endGameScene() {
-  scene = "menu_scene";
+  float[] rWidth = {(width-400)/2, 400};
+  //scene = "menu_scene";
+  fill( 255, 255 ,255 ,255);
+  textSize(48);
+  text( "Your score is", width / 2 - 160, 150);
+  textSize(64);
+  text( score, width / 2 - 60, 250);
+  textSize(32);
+  
+  //highscore
+  fill( 255, 255, 255, 255);
+  text( "highscore", width / 2 - 85, 335 );
+  fill( 0, 0, 0, 0);
+  rect( rWidth[0], 300, rWidth[1], 50 );
+  
+  //back
+  fill( 255, 255, 255, 255);
+  text( "back", width / 2 - 30, 435 );
+  fill( 0, 0, 0, 0);
+  rect( rWidth[0], 400, rWidth[1], 50 );
 }
 
 void highScoreScene() {
+  float[] rWidth = {(width-400)/2, 400};
+  if( once){
+    highscores = new int[5];
+    int i = 0;
+    db.query( "SELECT highscore FROM highscores ORDER BY highscore DESC LIMIT 5" );
+    //db.query( "SELECT * FROM highscores" );
+    while(db.next()){
+      highscores[i] = db.getInt("highscore");
+      println( db.getInt("highscore") );
+      i++;
+    }
+    once = false;
+  }
+  fill( 255, 255, 255, 255);
+  textSize(32);
+  text("Highscores", width / 2 - 70, 150);
+  for(int i = 0; i < highscores.length; i++){
+    text( (i+1)+"."+highscores[i], width / 2 - 70, 200+(50*i));
+  }
+  //back
+  fill( 255, 255, 255, 255);
+  text( "back", width / 2 - 30, 455 );
+  fill( 0, 0, 0, 0);
+  rect( rWidth[0], 420, rWidth[1], 50 );
 }
+
+
 
 /******************
  * Custom Methods *
