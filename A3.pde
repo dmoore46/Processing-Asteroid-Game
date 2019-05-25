@@ -14,10 +14,9 @@ boolean endGame = false;
 boolean sUP, sDOWN, sRIGHT, sLEFT; 
 String scene = "menu_scene";
 ArrayList<Star> stars = new ArrayList();
-File database = null; // declared null to create it in global scope
+File dbFile; // declared to create it in global scope
 SQLite db;
 int score;
-boolean once = true;
 int[] highscores;
 int newRoids;
 float roidSpeed;
@@ -45,11 +44,11 @@ public void setup() {
   background(0);
 
   //set in setup to avoid file path being in root processing folder
-  database = new File(sketchPath("db.sql")); 
+  dbFile = new File(sketchPath("db.sql")); 
 
-  if ( !database.exists() ) {
+  if ( !dbFile.exists() ) {
     try {
-      database.createNewFile();
+      dbFile.createNewFile();
     } 
     catch( IOException ioe ) {
       System.out.println("Exception ");
@@ -57,15 +56,11 @@ public void setup() {
     }
   }
 
-  //interesting how db in processing is similar to db in php
   db = new SQLite( this, "db.sql" );
-  db.setDebug(true);
   if( db.connect() ){
-
     db.execute( "CREATE TABLE IF NOT EXISTS highscores (highscore INTEGER NOT NULL)" );
   }
 
-  // load high score from a file
   for ( int i = 0; i < 200; i++) {
     Star star_temp = new Star();
     stars.add(star_temp);
@@ -152,46 +147,59 @@ public void keyReleased() {
 public void mousePressed() {
   float[] rWidth = {(width-400)/2, 400};
   if ( mouseX > rWidth[0] && mouseX < rWidth[0]+rWidth[1] ) {
-
-    if( scene == "menu_scene"){
-    //start
-      if ( mouseY > 200 && mouseY < 250 ) {
-        newGame = true;
-        scene = "game_scene";
-      }
-  
-      //highscore
-      if ( mouseY > 300 && mouseY < 350 ) {
-        once = true;
-        scene = "highscore_scene";
-      }
-  
-      //exit
-      if ( mouseY > 400 && mouseY < 450) {
-        System.exit(2);
-      }
-    }
     
-    if( scene == "endgame_scene" ){
-      
-       //highscore
-      if ( mouseY > 300 && mouseY < 350 ) {
-        once = true;
-        scene = "highscore_scene";
-      }
-      
-      //back
-      if ( mouseY > 400 && mouseY < 450) {
-        scene = "menu_scene";
-      }
-    }
+    switch( scene ){
+      case "menu_scene":
+        //start
+        if ( mouseY > 200 && mouseY < 250 ) {
+          newGame = true;
+          scene = "game_scene";
+        }
     
-    if( scene == "highscore_scene" ){
-      if( mouseY > 420 && mouseY < 470 ) {
-        scene = "menu_scene";
-      }
-    }
+        //highscore
+        if ( mouseY > 300 && mouseY < 350 ) {
+          
+          highscores = new int[5];
+          int i = 0;
+          db.query( "SELECT highscore FROM highscores ORDER BY highscore DESC LIMIT 5" );
+          while(db.next()){
+            highscores[i] = db.getInt("highscore");
+            i++;
+          }
+          
+          scene = "highscore_scene";
+        }
     
+        //exit
+        if ( mouseY > 400 && mouseY < 450) {
+          System.exit(2);
+        }
+        break;
+      case "endgame_scene":
+        //highscore
+        if ( mouseY > 300 && mouseY < 350 ) {
+          
+          highscores = new int[5];
+          int i = 0;
+          db.query( "SELECT highscore FROM highscores ORDER BY highscore DESC LIMIT 5" );
+          while(db.next()){
+            highscores[i] = db.getInt("highscore");
+            i++;
+          }
+          
+          scene = "highscore_scene";
+        }
+        
+        //back
+        if ( mouseY > 400 && mouseY < 450) {
+          scene = "menu_scene";
+        }
+        break;
+      case "highscore_scene":
+        if( mouseY > 420 && mouseY < 470 ) {
+          scene = "menu_scene";
+        }
+    }
   }
 }
 
@@ -207,29 +215,29 @@ public void mousePressed() {
 void menuScene() {
   for ( Star star : stars) {
     star.move();
-    star.create();
   }
   float[] rWidth = {(width-400)/2, 400};
   stroke( 255, 255, 255, 255);
 
   //start
   textSize(32);
+  fill( 0, 0, 0, 255);
+  rect( rWidth[0], 200, rWidth[1], 50 ); 
   fill( 255, 255, 255, 255);
   text( "start", width / 2 - 40, 235 );
-  fill( 0, 0, 0, 0);
-  rect( rWidth[0], 200, rWidth[1], 50 ); 
-
+  
   //highscore
+  fill( 0, 0, 0, 255);
+  rect( rWidth[0], 300, rWidth[1], 50 ); 
   fill( 255, 255, 255, 255);
   text( "highscore", width / 2 - 85, 335 );
-  fill( 0, 0, 0, 0);
-  rect( rWidth[0], 300, rWidth[1], 50 ); 
 
   //exit
+  fill( 0, 0, 0, 255);
+  rect( rWidth[0], 400, rWidth[1], 50 );
   fill( 255, 255, 255, 255);
   text( "exit", width / 2 - 30, 435 );
-  fill( 0, 0, 0, 0);
-  rect( rWidth[0], 400, rWidth[1], 50 );
+  
 }
 
 void gameScene() {
@@ -275,9 +283,9 @@ void gameScene() {
   // Loop over each asteroid and check if the player ship has collided, end the game if it has
   for (Asteroid roid : asteroids) {
     if (collisionDetection(playerShip, roid)) {
+      pushMatrix();
       scene = "endgame_scene";
       db.execute("INSERT INTO highscores (highscore) VALUES(" + score + ")");
-      println("added to db");
     }
   }
   // Loop over each bullet and asteroid and check for collision
@@ -303,7 +311,6 @@ void gameScene() {
 
 void endGameScene() {
   float[] rWidth = {(width-400)/2, 400};
-  //scene = "menu_scene";
   fill( 255, 255 ,255 ,255);
   textSize(48);
   text( "Your score is", width / 2 - 160, 150);
@@ -325,30 +332,21 @@ void endGameScene() {
 }
 
 void highScoreScene() {
-  float[] rWidth = {(width-400)/2, 400};
-  if( once){
-    highscores = new int[5];
-    int i = 0;
-    db.query( "SELECT highscore FROM highscores ORDER BY highscore DESC LIMIT 5" );
-    //db.query( "SELECT * FROM highscores" );
-    while(db.next()){
-      highscores[i] = db.getInt("highscore");
-      println( db.getInt("highscore") );
-      i++;
-    }
-    once = false;
-  }
+  
+  
+  
   fill( 255, 255, 255, 255);
   textSize(32);
   text("Highscores", width / 2 - 70, 150);
   for(int i = 0; i < highscores.length; i++){
     text( (i+1)+"."+highscores[i], width / 2 - 70, 200+(50*i));
   }
+  
   //back
   fill( 255, 255, 255, 255);
   text( "back", width / 2 - 30, 455 );
   fill( 0, 0, 0, 0);
-  rect( rWidth[0], 420, rWidth[1], 50 );
+  rect( (width-400)/2, 420, 400, 50 );
 }
 
 
@@ -808,9 +806,6 @@ class Star {
       y = 0;
       speed = random( 5, 20 );
     }
-  }
-
-  void create( ) {
     stroke( 255, 255, 255, 255);
     line( x, y, x, y + 5);
   }
