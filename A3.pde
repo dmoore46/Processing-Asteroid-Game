@@ -5,6 +5,24 @@ import java.util.ArrayList;
 import java.util.Random;
 import de.bezier.data.sql.*;
 
+/*********************
+
+
+Made by
+Andrew McIntosh
+&
+Daniel Moore
+
+Libraries:
+Bezier SQLib
+Processing Sound Library
+
+Breakdown video:
+https://www.youtube.com/watch?v=WIO3eUx3-fM
+
+***********************/
+
+
 /************************
  * Start of "Processing" *
  ************************/
